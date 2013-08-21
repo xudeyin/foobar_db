@@ -70,7 +70,7 @@ with open('resources/Sequence_Number_and_Table_Number_Lookup.csv') as csvfile:
         rowN += 1;
         if row[4] and row[5] :
             ##found a new table. dump the old one out first
-            ## tableName.startswith("074 [36,59] PRESENCE OF OWN CHILDREN UNDER 18 YEARS BY FAMILY TYPE BY EMPLOYMENT STATUS") :
+            ##if tableName.startswith("074 [36,59] PRESENCE OF OWN CHILDREN UNDER 18 YEARS BY FAMILY TYPE BY EMPLOYMENT STATUS") :
             ##    print "break!!!!"
             ret = processOneTable(tableList, rowCnt)
             v = allTableDict.get(ret)
@@ -100,7 +100,7 @@ with open('resources/Sequence_Number_and_Table_Number_Lookup.csv') as csvfile:
 
 ## write out the dictionary
 fo = open("output/tableList.txt", "w")
-fo.write("##Total tables needed: "+ str(len(allTableDict)) + "\n\n")
+##fo.write("##Total tables needed: "+ str(len(allTableDict)) + "\n\n")
 
 tabs= allTableDict.items()
 
