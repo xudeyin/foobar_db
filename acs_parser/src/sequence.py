@@ -100,6 +100,7 @@ with open('resources/Sequence_Number_and_Table_Number_Lookup.csv') as csvfile:
 
 ## write out the dictionary
 fo = open("output/tableList.txt", "w")
+fo1 = open("output/tables.txt", "w")
 ##fo.write("##Total tables needed: "+ str(len(allTableDict)) + "\n\n")
 
 tabs= allTableDict.items()
@@ -109,8 +110,10 @@ for tItem in tabs :
     ##first print out all tables that share the same schema
     for tn in tt :
         fo.write(tn+"\n")
+	fo1.write(tn+"\n")
     ##now write out column list
     fo.write(str(tItem[0]));
     ##print tItem[0];
     fo.write("\n")
 fo.close()
+fo1.close()
