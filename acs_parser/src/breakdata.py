@@ -21,8 +21,8 @@ def createTableBlockDataFile(srcDir, fname, start, length) :
     return
            
 def main() : 
-    SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
-
+    ##SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
+    SRC_DIR = "/home/dxu/mac_work"
     fin = open('output/tables.txt', 'r')
 
     for line in fin:
