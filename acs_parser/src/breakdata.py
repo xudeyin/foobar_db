@@ -18,9 +18,13 @@ def createTableSchemaFile(tabIdx, fname, tItem, fschema, fload, wdataset, wcolum
     
     fschema.write ("CREATE TABLE " + fname + " (\n")
     
-    fschema.write("    " + columns[0].ljust(64) + " INT4 NOT NULL,\n")
+    fschema.write("    " + columns[0].ljust(32) + " INT4 NOT NULL,\n")
     for c in columns[1:] :
-        cName = c[:30]
+        if c[0].isdigit() :
+            cName = 'N' + c[:29]
+        else :
+            cName = c[:30]
+        
         cCounter.update([cName])
         appendStr=str(cCounter[cName]-1).zfill(2);
         fschema.write("    " + (cName + appendStr).ljust(32) + " INT4 NOT NULL DEFAULT 0,\n")
@@ -28,9 +32,15 @@ def createTableSchemaFile(tabIdx, fname, tItem, fschema, fload, wdataset, wcolum
     fschema.write("    PRIMARY KEY (region_id)\n")
     fschema.write(");\n\n")
     
-    fload.write("COPY " + fname + " FROM \'data/" + fname + ".csv\' DELIMITER \',\' CSV;\n")
+    fload.write("\\COPY " + fname + " FROM \'data/" + fname + ".csv\' DELIMITER \',\' CSV;\n")
     
-    
+
+def isListEmpty(row):
+    for r in row :
+        if r :
+            return 0
+    return 1
+ 
 def createTableBlockDataFile(srcDir, fname, start, length, columns=None) :
     noHeader = 1
     theT = []
@@ -38,6 +48,8 @@ def createTableBlockDataFile(srcDir, fname, start, length, columns=None) :
     with open(fullpath) as csvfile:
         lreader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for srcLine in lreader :
+            if isListEmpty(srcLine[start: start + length]) == 1 :
+                continue
             newLine = [srcLine[5]] + srcLine[start:start + length]
             theT.append(newLine)
    
@@ -118,8 +130,8 @@ def main1() :
     tableIdx = 0        
     tabs= allTabDict.items()
     
-    fload.write("COPY acs_dataset FROM \'data/acs_dataset.csv\' DELIMITER \',\' CSV;\n")
-    fload.write("COPY acs_dataset_columns FROM \'data/acs_dataset_columns.csv\' DELIMITER \',\' CSV;\n")
+    fload.write("\\COPY acs_dataset FROM \'data/acs_dataset.csv\' DELIMITER \',\' CSV;\n")
+    fload.write("\\COPY acs_dataset_columns FROM \'data/acs_dataset_columns.csv\' DELIMITER \',\' CSV;\n")
     
     for tItem in tabs :
         tt = tItem[0];   ##key=tablename, value = column []
@@ -136,7 +148,7 @@ def main1() :
         createTableSchemaFile(tableIdx, fname+"_"+pos[1]+"_"+pos[2], tItem, fschema, fload, writer1, writer2) 
         
         ##the source file count field index starting from 1
-        ##createTableBlockDataFile(SRC_DIR, fname, int(pos[1])-1, int(pos[2]), tItem[1])
+        createTableBlockDataFile(SRC_DIR, fname, int(pos[1])-1, int(pos[2]), tItem[1])
         
         tableIdx += 1
         

@@ -9,6 +9,6 @@ create table acs_dataset_columns (
     column_name VARCHAR (64) NOT NULL,
     description VARCHAR (256),
 
-    PRIMARY KEY( id, column_name )
+    PRIMARY KEY( id, column_name ),
     FOREIGN KEY( id ) REFERENCES acs_dataset
 );
