@@ -5,6 +5,14 @@ import string
 import re
 from collections import Counter
 
+
+def cellHasIntValue(s):
+    try :
+        int(s)
+        return True
+    except ValueError:
+        return False
+    
 def recursiveProcessColumns (columnList, counter, indent, level) :
     retStr= ""
     localCounter = Counter()
@@ -37,7 +45,8 @@ def processOneTable(columnList, columnCnt ) :
     colC = Counter()
     colList=[]
     for c in columnList :
-        if c[3] :
+        ##sometimes c[3] has a value of 0.5. Dont know how to handle it. just skip it.
+        if c[3] and cellHasIntValue(c[3]) :
             if c[4] :
                 print "ERROR FORMAT!!"
                 return;
@@ -137,5 +146,7 @@ def main() :
         fo.write("\n")
     fo.close()
     fo1.close()
+    
+    print "======Done!!======"
 
 if  __name__ =='__main__':main()

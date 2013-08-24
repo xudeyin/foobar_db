@@ -10,8 +10,10 @@ from collections import Counter
 ## fschema: schema file
 ## fdataset = acs_dataset data file
 ## fcolumns = acs_dataset_columns
+## columnTypeList: [INT4, FOLOAT, ...] Note that it starts with the 2nd column!
+## first column is region_id which is always INT4
 ##
-def createTableSchemaFile(tabIdx, fname, tItem, fschema, fload, wdataset, wcolumns) : 
+def createTableSchemaFile(tabIdx, fname, columnTypeList, tItem, fschema, fload, wdataset, wcolumns) : 
     cCounter = Counter()
     wdataset.writerow([tabIdx, fname, tItem[0].strip('\n')]) 
     columns = tItem[1]
@@ -19,7 +21,7 @@ def createTableSchemaFile(tabIdx, fname, tItem, fschema, fload, wdataset, wcolum
     fschema.write ("CREATE TABLE " + fname + " (\n")
     
     fschema.write("    " + columns[0].ljust(32) + " INT4 NOT NULL,\n")
-    for c in columns[1:] :
+    for idx, c in enumerate(columns[1:]) :
         if c[0].isdigit() :
             cName = 'N' + c[:29]
         else :
@@ -27,8 +29,14 @@ def createTableSchemaFile(tabIdx, fname, tItem, fschema, fload, wdataset, wcolum
         
         cCounter.update([cName])
         appendStr=str(cCounter[cName]-1).zfill(2);
-        fschema.write("    " + (cName + appendStr).ljust(32) + " INT4 NOT NULL DEFAULT 0,\n")
+        
+        try :
+            fschema.write("    " + (cName + appendStr).ljust(32) + " " + columnTypeList[idx] + " DEFAULT 0,\n")
+        except IndexError:
+            print "    ERROR FORMAT IN TABLE " + fname
+            
         wcolumns.writerow([tabIdx, cName + appendStr, c])
+        
     fschema.write("    PRIMARY KEY (region_id)\n")
     fschema.write(");\n\n")
     
@@ -40,18 +48,47 @@ def isListEmpty(row):
         if r :
             return 0
     return 1
- 
+
+def cellHasIntValue(s):
+    try :
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def removeInvalidChar(row):
+    for cnt, c in enumerate(row) :
+        if str(c) == "." :
+            row[cnt] = None
+            
+def processColumnTypes(columnTypes, row):
+    for cnt, c in enumerate(row) :
+        if c and not cellHasIntValue(c) :
+                columnTypes[cnt] = 'FLOAT'
+            
+    
+##this function returns a list of column types [INT4,FLOAT,INT4,FLOAT....]
+##based on the cell values. if all cell has integer value then the data type for this column is INT4. 
+##otherwise it is FLOAT
+## note the column type starts with 2nd column. the first column is region_id which is always integer.
 def createTableBlockDataFile(srcDir, fname, start, length, columns=None) :
     noHeader = 1
-    theT = []
+    theT = [ ]
+    colDataType=['INT4']*length
+    
     fullpath=os.path.join(srcDir, fname + ".txt")
     with open(fullpath) as csvfile:
         lreader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for srcLine in lreader :
             if isListEmpty(srcLine[start: start + length]) == 1 :
+                ##skip empty list
                 continue
+            ## regionID is the first column
             newLine = [srcLine[5]] + srcLine[start:start + length]
+            removeInvalidChar(newLine)
             theT.append(newLine)
+            
+            processColumnTypes(colDataType, newLine[1:])
    
     fullpath = os.path.join(srcDir, fname + "_" + str(start+1) + "_" + str(length) + ".csv")
     with open(fullpath, 'w')  as csvfile:
@@ -60,11 +97,11 @@ def createTableBlockDataFile(srcDir, fname, start, length, columns=None) :
             tWriter.writerow(columns)
         for newLine in theT:
             tWriter.writerow(newLine)
-    return
+    return colDataType
            
 def main() : 
-    ##SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
-    SRC_DIR = "/home/dxu/mac_work"
+    SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
+    ##SRC_DIR = "/home/dxu/mac_work"
     fin = open('output/tables.txt', 'r')
 
     for line in fin:
@@ -81,8 +118,8 @@ def main() :
         createTableBlockDataFile(SRC_DIR, fname, int(pos[1])-1, int(pos[2]))
            
 def main1() : 
-    ##SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
-    SRC_DIR = "/home/dxu/mac_work"
+    SRC_DIR = "/Users/dxu/Mapster/Massachusetts_Tracts_Block_Groups_Only"
+    ##SRC_DIR = "/home/dxu/mac_work"
     fin = open('output/tableList.txt', 'r')
     allTabDict = {}
     tableNames = []
@@ -132,7 +169,11 @@ def main1() :
     
     fload.write("\\COPY acs_dataset FROM \'data/acs_dataset.csv\' DELIMITER \',\' CSV;\n")
     fload.write("\\COPY acs_dataset_columns FROM \'data/acs_dataset_columns.csv\' DELIMITER \',\' CSV;\n")
-    
+   
+    ##init a dictionary that stores the column type list
+    ##key = table name ( e20115ma0034000_43_5 )
+    ##value = [INT4, INT4, FLOAT , ....]
+    dbColumnTypeDict = {}
     for tItem in tabs :
         tt = tItem[0];   ##key=tablename, value = column []
         pos = re.findall(r'\d+', tt);
@@ -142,13 +183,16 @@ def main1() :
         fname = str(pos[0]).zfill(4)
         fname = "e20115ma" + fname +"000"
         print "process file " + fname
-
-        
-        ## generate schema file and assistent table data files
-        createTableSchemaFile(tableIdx, fname+"_"+pos[1]+"_"+pos[2], tItem, fschema, fload, writer1, writer2) 
         
         ##the source file count field index starting from 1
-        createTableBlockDataFile(SRC_DIR, fname, int(pos[1])-1, int(pos[2]), tItem[1])
+        colTypeList = createTableBlockDataFile(SRC_DIR, fname, int(pos[1])-1, int(pos[2]), tItem[1])
+        
+        dbTableName = fname+"_"+pos[1]+"_"+pos[2]
+       
+        dbColumnTypeDict[dbTableName] = colTypeList
+        
+        ## generate schema file and assistent table data files
+        createTableSchemaFile(tableIdx, dbTableName, colTypeList, tItem, fschema, fload, writer1, writer2) 
         
         tableIdx += 1
         
