@@ -111,7 +111,7 @@ def main() :
                 ##start a new table
                 tableList = [ ]
                 rowCnt=row[5].split(' ', 1)[0];
-                tableName = string.zfill(row[2], 3) + " [" + row[4] + "," + rowCnt + "] " + row[7]
+                tableName = string.zfill(row[2], 3) + " [" + row[4] + "," + rowCnt + "] " + row[7] + "|" + row[8]
                 print tableName
                 foundTable = 1
             else :

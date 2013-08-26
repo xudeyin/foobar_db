@@ -15,12 +15,13 @@ from collections import Counter
 ##
 def createTableSchemaFile(tabIdx, fname, columnTypeList, tItem, fschema, fload, wdataset, wcolumns) : 
     cCounter = Counter()
-    wdataset.writerow([tabIdx, fname, tItem[0].strip('\n')]) 
+    wdataset.writerow([tabIdx, fname] + tItem[0].strip('\n').split('|')) 
     columns = tItem[1]
     
     fschema.write ("CREATE TABLE " + fname + " (\n")
     
-    fschema.write("    " + columns[0].ljust(32) + " INT4 NOT NULL,\n")
+    fschema.write("    " + 'state'.ljust(32) + " CHAR(2) NOT NULL,\n") ## state
+    fschema.write("    " + columns[0].ljust(32) + " INT4 NOT NULL,\n") ## region id
     for idx, c in enumerate(columns[1:]) :
         if c[0].isdigit() :
             cName = 'N' + c[:29]
@@ -37,7 +38,7 @@ def createTableSchemaFile(tabIdx, fname, columnTypeList, tItem, fschema, fload, 
             
         wcolumns.writerow([tabIdx, cName + appendStr, c])
         
-    fschema.write("    PRIMARY KEY (region_id)\n")
+    fschema.write("    PRIMARY KEY (state, region_id)\n")
     fschema.write(");\n\n")
     
     fload.write("\\COPY " + fname + " FROM \'data/" + fname + ".csv\' DELIMITER \',\' CSV;\n")
@@ -94,9 +95,9 @@ def createTableBlockDataFile(srcDir, fname, start, length, columns=None) :
     with open(fullpath, 'w')  as csvfile:
         tWriter = csv.writer(csvfile, delimiter=',')
         if noHeader == 0 and columns :
-            tWriter.writerow(columns)
+            tWriter.writerow(['state'] + columns)
         for newLine in theT:
-            tWriter.writerow(newLine)
+            tWriter.writerow(['MA'] + newLine)
     return colDataType
            
 def main() : 
