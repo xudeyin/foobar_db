@@ -55,7 +55,7 @@ def main() :
             fout.write(", \n    t" + str(i) + "." + c + " as "+ k + "_" + c)        
         i += 1
         
-    fout.write("\nfrom record_id x,\n")        
+    fout.write("\nfrom record_id x\n")        
             
     #now print
     i = 0
