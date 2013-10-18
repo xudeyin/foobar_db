@@ -1,15 +1,20 @@
+drop table acs_dataset_columns;
+drop table acs_dataset;
+
 create table acs_dataset (
-    id          INT4 NOT NULL PRIMARY KEY,
-    table_name  VARCHAR (64) NOT NULL,
-    description VARCHAR (256),
-    subject_area  VARCHAR (64) 
+    state                     char(2) not null,
+    table_name                varchar(32) not null,
+    file_name                 varchar(32) not null,
+    start_pos                 int4 not null,
+    length                    int4 not null,
+    description               varchar(256) not null,
+    subject_area              varchar(128)
 );
 
 create table acs_dataset_columns (
-    id          INT4 NOT NULL,
-    column_name VARCHAR (64) NOT NULL,
-    description VARCHAR (256),
-
-    PRIMARY KEY( id, column_name ),
-    FOREIGN KEY( id ) REFERENCES acs_dataset
+    state                     char(2) not null,
+    table_name                varchar(32) not null,
+    column_name               varchar(32) not null,
+    description               varchar(256) not null,
+    primary key (state, table_name, column_name)
 );
