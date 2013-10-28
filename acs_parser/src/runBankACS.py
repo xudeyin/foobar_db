@@ -3,6 +3,7 @@
 # this script calculates the intersctions of circular buffers of each bank location and 
 # the tract or block groups defined in the TIGER file. 
 # The calculation is based on SRID 26986 (for Massachusetts mainland)
+import os
 import psycopg2
 import time
 import csv
@@ -17,7 +18,7 @@ def getCurrentTime() :
 
 def getTigerFileType(sType) :
     if sType == 'tract' :
-	return 140
+        return 140
     elif sType == 'bg' :
         return 150
     return -1
@@ -207,7 +208,7 @@ def createIntersectionTable(conn, tName, srid) :
 
     conn.commit()
     cur.close()
-    print "intersection table created" 
+    print "==>Intersection table created" 
 
 def parseOutputColumnName(arr) :
     if not arr[2] :
@@ -240,18 +241,18 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, s
 
     for radius in xrange(start, end + 1, step) :
         startT=getCurrentTime()
-        print "Processing radius " + str(radius) +"m. Start Time: " + str(startT)
+        print "==>Processing radius " + str(radius) +"m. Start Time: " + str(startT)
         calculateOneRadius(conn, writer, intersectTableName, srid, radius,  gType, tractDict)
         if shortCommitFlag :
-  	    output.seek(0) 
+            output.seek(0) 
             cur1.copy_from(output, intersectTableName, sep=',')
             conn.commit()
             output = StringIO.StringIO()
             writer = csv.writer(output)
 
         endT=getCurrentTime()
-        print "End Time: " + str(endT)
-        print "Duration: " + str(endT-startT)
+        print "==>End Time: " + str(endT)
+        print "==>Duration: " + str(endT-startT)
         print ""
 
     output.seek(0) 
@@ -260,12 +261,19 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, s
     cur1.close()
 
 def createOutputFile(conn, outputTableName, outputFileName) :
+    print '==>Copy to ' + outputFileName
+    qStr = 'copy ' + outputTableName + " to '" + \
+            os.path.abspath(outputFileName) + \
+            "' WITH CSV HEADER"
+
+    print qStr
     cur = conn.cursor()
-    with open(outputFileName, 'w')  as csvfile:
-        tWriter = csv.writer(csvfile, delimiter=',')
-        cur.copy_to(tWriter, outputTablename)
+    ##fout=open(outputFileName, 'w')
+    ##cur.copy_expert(qStr, fout)
+    cur.execute(qStr)
 
     cur.close()
+    print '==>Output file generated'
 
 #    qStr = 'copy ' + outputTableName + " to '" + outputFileName + "' with CSV HEADER"
 #    cursor.execute(qStr)
@@ -329,6 +337,8 @@ def main() :
     if isOutputToFile :
         createOutputFile(conn, outputTableName, outputFileName)
 
+
+    print '==> Done <=='
 #### end of main ####
 
 if __name__ =='__main__':main()
