@@ -13,15 +13,15 @@ def getCurrentTime() :
 
 def getTigerFileType(sType) :
     if sType == 'tract' :
-	return 1
+	return 140
     elif sType == 'bg' :
-        return 2
+        return 150
     return -1
         
 def getTractArea(cur, t) :
     tractDict={}
 
-    cur.execute("select geoid, ST_Area(geom26986) from tl_2011_25_26986 where type=%s", (getTigerFileType(t),))
+    cur.execute("select geoid, ST_Area(geom26986) from tl_2011_transform where sumlev=%s", (getTigerFileType(t),))
 
     for row in cur.fetchall() :
         tractDict[row[0]]=row[1];
@@ -31,18 +31,19 @@ def getTractArea(cur, t) :
 def getIntersection3(cur, writer, bank_id, circle, c_area, srid, radius, t, tractDict) :
     qstr=''' select  
                 t.geoid, 
+                t.logrecno,
                 ST_Area(ST_Intersection(%s, t.geom26986)) as a_intersect 
             from 
-                tl_2011_25_26986 t
+                tl_2011_transform t
             where 
-                ST_Intersects(%s, t.geom26986)  and t.type = %s'''
+                ST_Intersects(%s, t.geom26986)  and t.sumlev = %s'''
 
     cur.execute(qstr, (circle, circle, getTigerFileType(t)))
    
     for t in cur.fetchall() :
         geoid=t[0]
         tractArea=tractDict[geoid]
-        writer.writerow([bank_id, radius, geoid, c_area, tractArea, t[1], t[1]/tractArea*100])
+        writer.writerow([bank_id, radius, geoid, t[1], c_area, tractArea, t[2], t[2]/tractArea*100])
 
 def calculateOneRadius(conn, srid, radius, sType, tractDict) :
     cur1=conn.cursor()
