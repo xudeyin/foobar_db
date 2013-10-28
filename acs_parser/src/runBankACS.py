@@ -1,8 +1,12 @@
 #!/usr/bin/python
 
-# this script calculates the intersctions of circular buffers of each bank location and 
-# the tract or block groups defined in the TIGER file. 
-# The calculation is based on SRID 26986 (for Massachusetts mainland)
+# 1. Calculate the bank location buffer / tract(bg) intersections
+# 2. Store results in db table (named in intersection.table param)
+# 3. Query ACS tables based on pre-defined coolumns.  The coloumn 
+#    selection is specified in output.column.list in the configuration file.
+# 4. Output the query results in db table (outupt.db.table.name) and
+#    file (output.file.name)
+# Note: The calculation is based on SRID 26986 (for Massachusetts Mainland)
 import os
 import psycopg2
 import time
@@ -33,7 +37,49 @@ def getTractArea(cur, t) :
 
     return tractDict
 
-def getIntersection(conn, csvWriter, cur1, cur2, intersectionTableName, bank_id, circle, c_area, srid, radius, t, tractDict) :
+
+def getIntersectionNoGeom(conn, \
+        csvWriter, \
+        cur1, \
+        cur2, \
+        intersectionTableName, \
+        bank_id, \
+        circle, \
+        c_area, \
+        srid, \
+        radius, \
+        t, \
+        tractDict) :
+    qstr1=''' select  
+                t.geoid, 
+                t.logrecno,
+                ST_Area(ST_Intersection(%s, t.geom26986))
+            from 
+                tl_2011_transform t
+            where 
+                ST_Intersects(%s, t.geom26986)  and t.sumlev = %s'''
+
+    cur1.execute(qstr1, (circle, circle, getTigerFileType(t)))
+
+    for t in cur1.fetchall() :
+        geoid=t[0]
+        tractArea=tractDict[geoid]
+        csvWriter.writerow((bank_id, radius, geoid, \
+                t[1], c_area, tractArea, t[2], \
+                t[2]/tractArea*100, srid))
+
+def getIntersection(conn, \
+        csvWriter, \
+        cur1, \
+        cur2, \
+        intersectionTableName, \
+        bank_id, \
+        circle, \
+        c_area, \
+        srid, \
+        radius, \
+        t, \
+        tractDict) :
     qstr1=''' select  
                 t.geoid, 
                 t.logrecno,
@@ -49,9 +95,18 @@ def getIntersection(conn, csvWriter, cur1, cur2, intersectionTableName, bank_id,
     for t in cur1.fetchall() :
         geoid=t[0]
         tractArea=tractDict[geoid]
-        csvWriter.writerow((bank_id, radius, geoid, t[1], c_area, tractArea, t[2], t[2]/tractArea*100, srid, t[3]))
+        csvWriter.writerow((bank_id, radius, geoid, \
+                t[1], c_area, tractArea, t[2], \
+                t[2]/tractArea*100, srid, t[3]))
 
-def calculateOneRadius(conn, csvWriter, intersectTableName, srid, radius, sType, tractDict) :
+def calculateOneRadius(conn, \
+        csvWriter, \
+        intersectTableName, \
+        srid, \
+        radius, \
+        sType, \
+        tractDict, \
+        skipGeom) :
     cur1=conn.cursor()
     cur2=conn.cursor()
   
@@ -61,10 +116,18 @@ def calculateOneRadius(conn, csvWriter, intersectTableName, srid, radius, sType,
                            ST_Buffer(ST_Transform(geom, %s),%s),
                            ST_Area(ST_Buffer(ST_Transform(geom, %s),%s))
                     FROM
-                           bank_branch order by id''', (srid, radius, srid, radius))
+                           bank_branch order by id''', \
+                                   (srid, radius, srid, radius))
 
     for row in cur1.fetchall():
-        getIntersection(conn, csvWriter, cur1, cur2, intersectTableName, row[0], row[1], row[2], srid, radius, sType, tractDict)
+        if skipGeom :
+            getIntersectionNoGeom(conn, csvWriter, cur1, cur2, \
+                intersectTableName, row[0], row[1], row[2], \
+                srid, radius, sType, tractDict)
+        else :
+            getIntersection(conn, csvWriter, cur1, cur2, \
+                intersectTableName, row[0], row[1], row[2], \
+                srid, radius, sType, tractDict)
 
     cur1.close()
     cur2.close()
@@ -72,7 +135,8 @@ def calculateOneRadius(conn, csvWriter, intersectTableName, srid, radius, sType,
 def queryACSTables(conn, tDict, intersectionTableName, resultTableName) :
  
     ## construct query statement for the _detail table.
-    qStr1 = 'insert into ' + resultTableName + '_detail \nselect t0.bank_id\n, t0.radius\n, t0.geoid\n, t0.logrecno\n'
+    qStr1 = 'insert into ' + resultTableName + \
+            '_detail \nselect t0.bank_id\n, t0.radius\n, t0.geoid\n, t0.logrecno\n'
 
     i = 1
     for tName in sorted(tDict) :
@@ -87,7 +151,8 @@ def queryACSTables(conn, tDict, intersectionTableName, resultTableName) :
     for tName in sorted(tDict) :
         if tName=='bank_branch' :
             continue
-        qStr1 = qStr1 + 'left join ' + tName + ' t' + str(i) + ' on t0.logrecno=t' + str(i) + '.region_id\n'
+        qStr1 = qStr1 + 'left join ' + tName + ' t' + str(i) + \
+                ' on t0.logrecno=t' + str(i) + '.region_id\n'
         i += 1
 
     print qStr1
@@ -229,7 +294,14 @@ def parseTableSelectionStr(tDict, columnStr) :
     print tDict
  
 
-def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, shortCommitFlag) :
+def doIntersectionCal(conn, intersectTableName, gType, start, end, step, \
+        srid, shortCommitFlag, skipGeom) :
+
+    colArr=['bank_id', 'radius', 'geoid', 'logrecno', 'area1', \
+                         'area2', 'intersect_area', 'ratio', 'srid']
+
+    if not skipGeom :
+        colArr.append('geom')
 
     cur1 = conn.cursor()
 
@@ -242,10 +314,11 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, s
     for radius in xrange(start, end + 1, step) :
         startT=getCurrentTime()
         print "==>Processing radius " + str(radius) +"m. Start Time: " + str(startT)
-        calculateOneRadius(conn, writer, intersectTableName, srid, radius,  gType, tractDict)
+        calculateOneRadius(conn, writer, intersectTableName, srid, \
+                radius,  gType, tractDict, skipGeom)
         if shortCommitFlag :
             output.seek(0) 
-            cur1.copy_from(output, intersectTableName, sep=',')
+            cur1.copy_from(output, intersectTableName, sep=',', columns=colArr)
             conn.commit()
             output = StringIO.StringIO()
             writer = csv.writer(output)
@@ -256,7 +329,7 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, s
         print ""
 
     output.seek(0) 
-    cur1.copy_from(output, intersectTableName, sep=',')
+    cur1.copy_from(output, intersectTableName, sep=',', columns=colArr)
     conn.commit()
     cur1.close()
 
@@ -281,12 +354,13 @@ def createOutputFile(conn, outputTableName, outputFileName) :
 
 def main() :
 
-    parser = argparse.ArgumentParser(description='Bank location and ACS data analysis based on SRID 26986 (Massachusetts mainland)')
-    parser.add_argument('config_file', type=str,  help='Path to the configuration file')
+    parser = argparse.ArgumentParser(description='Bank location and ACS data analysis based on SRID 26986 (Massachusetts mainland).')
+    parser.add_argument('config_file', type=str,  help='Path to the configuration file.')
     parser.add_argument('-r', action='store_true', help='Re-calculate the intersection table. By default the program uses the existing table defined in the configuration file.')
     parser.add_argument('-tiger', choices=['tract','bg', 'all'], default='all', help='Which TIGER file(s) to use in the spatial calculation. Default = ALL')
-    parser.add_argument('-shortcommit', action='store_true', help='Invoke database commit for each radius calculation. Use this option on small server with limited resources')
-
+    parser.add_argument('-shortcommit', action='store_true', help='Invoke database commit for each radius calculation. Use this option on small server with limited resources.')
+    parser.add_argument('-skipgeom', action='store_true', help='Skip store the intersection MUTLIPOLYGON in the geom column.  This will cut the processing time by half.')
+    
     args = vars(parser.parse_args())
 
     print args
@@ -319,15 +393,19 @@ def main() :
     conn = psycopg2.connect(database='mapster_db', user='mapster')
 
     shortCommit=args['shortcommit']
+    skipGeom=args['skipgeom']
 
     ## calculate spatial intersections
     if args['r'] :
         createIntersectionTable(conn, intersectionTableName, srid)
         if gType=='tract' or gType=='all' :
-            doIntersectionCal(conn, intersectionTableName, 'tract', minRadius, maxRadius, step, srid, shortCommit)
+            doIntersectionCal(conn, intersectionTableName, \
+                    'tract', minRadius, maxRadius, step, \
+                    srid, shortCommit, skipGeom)
         if gType=='bg' or gType=='all' :
-            doIntersectionCal(conn, intersectionTableName, 'bg', minRadius, maxRadius, step, srid, shortCommit)
-
+            doIntersectionCal(conn, intersectionTableName, \
+                    'bg', minRadius, maxRadius, step, \
+                    srid, shortCommit, skipGeom)
 
     ## calculate acs data based on spatial analysis
     createResultTable(conn, tableSelectionDict, outputTableName)
