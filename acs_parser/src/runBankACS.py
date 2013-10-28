@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-# this script calculates the intersctions of circular buffers with various radius for each bank location and 
-# the tract or block groups defined in the TIGER file.
+# this script calculates the intersctions of circular buffers of each bank location and 
+# the tract or block groups defined in the TIGER file. 
 # The calculation is based on SRID 26986 (for Massachusetts mainland)
 import psycopg2
 import time
@@ -179,9 +179,7 @@ radius                 float           not null,
 
           
 def createIntersectionTable(conn, tName, srid) :
-    qstr00='select * from pg_tables where tablename=%s'
-
-    qstr0='drop table ' + tName
+    qstr0 = 'drop table if exists ' + tName + ' cascade'
 
     qstr= 'create table ' + tName +  ''' (
             bank_id                int4         not null,
@@ -201,11 +199,7 @@ def createIntersectionTable(conn, tName, srid) :
     qstr2 = 'create index idx_' + tName + ' on ' + tName + ' (logrecno)'
 
     cur=conn.cursor()
-
-    ret = cur.execute(qstr00, (tName,))
-    if cur.fetchone() :
-        cur.execute(qstr0)
-        conn.commit()
+    cur.execute(qstr0)
 
     cur.execute(qstr)
     cur.execute(qstr1, (tName, srid))
@@ -234,7 +228,7 @@ def parseTableSelectionStr(tDict, columnStr) :
     print tDict
  
 
-def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid) :
+def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid, shortCommitFlag) :
 
     cur1 = conn.cursor()
 
@@ -248,6 +242,13 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid) :
         startT=getCurrentTime()
         print "Processing radius " + str(radius) +"m. Start Time: " + str(startT)
         calculateOneRadius(conn, writer, intersectTableName, srid, radius,  gType, tractDict)
+        if shortCommitFlag :
+  	    output.seek(0) 
+            cur1.copy_from(output, intersectTableName, sep=',')
+            conn.commit()
+            output = StringIO.StringIO()
+            writer = csv.writer(output)
+
         endT=getCurrentTime()
         print "End Time: " + str(endT)
         print "Duration: " + str(endT-startT)
@@ -258,12 +259,25 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, srid) :
     conn.commit()
     cur1.close()
 
+def createOutputFile(conn, outputTableName, outputFileName) :
+    cur = conn.cursor()
+    with open(outputFileName, 'w')  as csvfile:
+        tWriter = csv.writer(csvfile, delimiter=',')
+        cur.copy_to(tWriter, outputTablename)
+
+    cur.close()
+
+#    qStr = 'copy ' + outputTableName + " to '" + outputFileName + "' with CSV HEADER"
+#    cursor.execute(qStr)
+ 
+
 def main() :
 
-    parser = argparse.ArgumentParser(description='Bank location buffer and tract/bg intersection calculation based on SRID 26986')
-    parser.add_argument('config_file', type=str,  help='Path to configuration file')
+    parser = argparse.ArgumentParser(description='Bank location and ACS data analysis based on SRID 26986 (Massachusetts mainland)')
+    parser.add_argument('config_file', type=str,  help='Path to the configuration file')
     parser.add_argument('-r', action='store_true', help='Re-calculate the intersection table. By default the program uses the existing table defined in the configuration file.')
-    parser.add_argument('-tiger', choices=['tract','bg', 'all'], default='all', help='Which TIGER file(s) to use in spatial calculation. Default = ALL')
+    parser.add_argument('-tiger', choices=['tract','bg', 'all'], default='all', help='Which TIGER file(s) to use in the spatial calculation. Default = ALL')
+    parser.add_argument('-shortcommit', action='store_true', help='Invoke database commit for each radius calculation. Use this option on small server with limited resources')
 
     args = vars(parser.parse_args())
 
@@ -280,6 +294,9 @@ def main() :
     step=config.getint('bank', 'radius.step')
     srid = config.getint('GIS', 'srid.MA')
 
+    isOutputToFile = config.getboolean('output', 'output.wirte.to.file')
+    outputFileName = config.get('output', 'output.file.name')
+
     columnStr=config.get('output', 'output.column.list')
     outputTableName = config.get('output', 'output.db.table.name')
 
@@ -293,18 +310,24 @@ def main() :
 
     conn = psycopg2.connect(database='mapster_db', user='mapster')
 
+    shortCommit=args['shortcommit']
+
     ## calculate spatial intersections
     if args['r'] :
         createIntersectionTable(conn, intersectionTableName, srid)
         if gType=='tract' or gType=='all' :
-            doIntersectionCal(conn, intersectionTableName, 'tract', minRadius, maxRadius, step, srid)
+            doIntersectionCal(conn, intersectionTableName, 'tract', minRadius, maxRadius, step, srid, shortCommit)
         if gType=='bg' or gType=='all' :
-            doIntersectionCal(conn, intersectionTableName, 'bg', minRadius, maxRadius, step, srid)
+            doIntersectionCal(conn, intersectionTableName, 'bg', minRadius, maxRadius, step, srid, shortCommit)
 
 
     ## calculate acs data based on spatial analysis
     createResultTable(conn, tableSelectionDict, outputTableName)
     queryACSTables(conn, tableSelectionDict, intersectionTableName, outputTableName)
+
+    ## output to CSV file
+    if isOutputToFile :
+        createOutputFile(conn, outputTableName, outputFileName)
 
 #### end of main ####
 
