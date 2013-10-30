@@ -38,18 +38,18 @@ def getTractArea(cur, t) :
     return tractDict
 
 
-def getIntersectionNoGeom(conn, \
+def getIntersectionNoGeom(
         csvWriter, \
         cur1, \
         cur2, \
-        intersectionTableName, \
         bank_id, \
         circle, \
         c_area, \
         srid, \
         radius, \
-        t, \
+        tigerFileType, \
         tractDict) :
+
     qstr1=''' select  
                 t.geoid, 
                 t.logrecno,
@@ -59,26 +59,20 @@ def getIntersectionNoGeom(conn, \
             where 
                 ST_Intersects(%s, t.geom26986)  and t.sumlev = %s'''
 
-    cur1.execute(qstr1, (circle, circle, getTigerFileType(t)))
+    getIntersectCommon(qstr1, csvWriter, cur1, cur2, bank_id, circle, c_area, \
+            srid, radius,  getTigerFileType(tigerFileType), tractDict, False)
 
-    for t in cur1.fetchall() :
-        geoid=t[0]
-        tractArea=tractDict[geoid]
-        csvWriter.writerow((bank_id, radius, geoid, \
-                t[1], c_area, tractArea, t[2], \
-                t[2]/tractArea*100, srid))
 
-def getIntersection(conn, \
+def getIntersection(
         csvWriter, \
         cur1, \
         cur2, \
-        intersectionTableName, \
         bank_id, \
         circle, \
         c_area, \
         srid, \
         radius, \
-        t, \
+        tigerFileType, \
         tractDict) :
     qstr1=''' select  
                 t.geoid, 
@@ -90,14 +84,43 @@ def getIntersection(conn, \
             where 
                 ST_Intersects(%s, t.geom26986)  and t.sumlev = %s'''
 
-    cur1.execute(qstr1, (circle, circle, circle, getTigerFileType(t)))
+    getIntersectCommon(qstr1, csvWriter, cur1, cur2, bank_id, circle, c_area, \
+            srid, radius,  getTigerFileType(tigerFileType), tractDict, True)
+
+
+def getIntersectCommon(queryStr, \
+        csvWriter, \
+        cur1, \
+        cur2, \
+        bank_id, \
+        circle, \
+        c_area, \
+        srid, \
+        radius, \
+        intTigerType, \
+        tractDict, \
+        isIncludeGeom ) :
+
+    t1 = getCurrentTime(); 
+    if isIncludeGeom :
+        cur1.execute(queryStr, (circle, circle, circle, intTigerType))
+    else :
+        cur1.execute(queryStr, (circle, circle, intTigerType))
 
     for t in cur1.fetchall() :
         geoid=t[0]
         tractArea=tractDict[geoid]
-        csvWriter.writerow((bank_id, radius, geoid, \
+        if isIncludeGeom :
+            csvWriter.writerow((bank_id, radius, geoid, \
                 t[1], c_area, tractArea, t[2], \
                 t[2]/tractArea*100, srid, t[3]))
+        else :
+            csvWriter.writerow((bank_id, radius, geoid, \
+                t[1], c_area, tractArea, t[2], \
+                t[2]/tractArea*100, srid))
+
+    t2 = getCurrentTime(); 
+    print "        process one bank: " + str(t2-t1)
 
 def calculateOneRadius(conn, \
         csvWriter, \
@@ -110,7 +133,6 @@ def calculateOneRadius(conn, \
     cur1=conn.cursor()
     cur2=conn.cursor()
   
-    t1 = getCurrentTime(); 
     cur1.execute('''SELECT 
                            id, 
                            ST_Buffer(ST_Transform(geom, %s),%s),
@@ -121,12 +143,12 @@ def calculateOneRadius(conn, \
 
     for row in cur1.fetchall():
         if skipGeom :
-            getIntersectionNoGeom(conn, csvWriter, cur1, cur2, \
-                intersectTableName, row[0], row[1], row[2], \
+            getIntersectionNoGeom(csvWriter, cur1, cur2, \
+                row[0], row[1], row[2], \
                 srid, radius, sType, tractDict)
         else :
-            getIntersection(conn, csvWriter, cur1, cur2, \
-                intersectTableName, row[0], row[1], row[2], \
+            getIntersection(csvWriter, cur1, cur2, \
+                row[0], row[1], row[2], \
                 srid, radius, sType, tractDict)
 
     cur1.close()
@@ -382,6 +404,13 @@ def main() :
     columnStr=config.get('output', 'output.column.list')
     outputTableName = config.get('output', 'output.db.table.name')
 
+    ## database connection parameters
+    dbName=config.get('database', 'db.name')
+    dbUser=config.get('database', 'db.user')
+    dbPassword=config.get('database', 'db.password')
+    dbHost=config.get('database', 'db.host')
+    dbPort=config.getint('database', 'db.port')
+
     ## use this dictionary to store the selected table and columns.
     ## the key is table name
     ## the value is a list of [table.column_name, output_column_name]
@@ -390,7 +419,11 @@ def main() :
 
     print intersectionTableName
 
-    conn = psycopg2.connect(database='mapster_db', user='mapster')
+    conn = psycopg2.connect(host=dbHost, \
+            database=dbName, \
+            user=dbUser, \
+            password=dbPassword, \
+            port=dbPort)
 
     shortCommit=args['shortcommit']
     skipGeom=args['skipgeom']
