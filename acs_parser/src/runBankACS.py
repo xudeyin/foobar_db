@@ -122,9 +122,58 @@ def getIntersectCommon(queryStr, \
     t2 = getCurrentTime(); 
     print "        process one bank: " + str(t2-t1)
 
-def calculateOneRadius(conn, \
+
+def calculateOneRadius2 (
+        conn,\
         csvWriter, \
-        intersectTableName, \
+        srid, \
+        radius, \
+        sType, \
+        tractDict, \
+        skipGeom) :
+
+    qStr = '''
+        select  
+            b.bank_id,
+            b.c_area,
+            t.geoid, 
+            t.logrecno, 
+            ST_Area(ST_Intersection(b.circle, t.geom26986)), 
+            ST_Multi(ST_Intersection(b.circle,  t.geom26986)) 
+        from 
+            tl_2011_transform t, 
+            ( 
+                select bank_id as bank_id, 
+                    ST_Buffer(geom, %s) as circle, 
+                    ST_Area(ST_Buffer(geom, %s)) as c_area 
+                from bank_branch_26986 
+            ) b 
+        where 
+            ST_Intersects(circle, t.geom26986)  and t.sumlev = %s'''
+    cur=conn.cursor()
+    cur.execute(qStr, (radius, radius, getTigerFileType(sType)))
+
+    for t in cur.fetchall() :
+
+        bank_id=t[0]
+        c_area=t[1]
+        geoid=t[2]
+        logrecno=t[3]
+        tractArea=tractDict[geoid]
+
+        if isIncludeGeom :
+            csvWriter.writerow((bank_id, radius, geoid, \
+                logrecno, c_area, tractArea, t[4], \
+                t[4]/tractArea*100, 26986, t[5]))
+        else :
+            csvWriter.writerow((bank_id, radius, geoid, \
+                logrecno, c_area, tractArea, t[4], \
+                t[4]/tractArea*100, 26986))
+
+
+def calculateOneRadius(
+        conn, \
+        csvWriter, \
         srid, \
         radius, \
         sType, \
@@ -336,7 +385,7 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, \
     for radius in xrange(start, end + 1, step) :
         startT=getCurrentTime()
         print "==>Processing radius " + str(radius) +"m. Start Time: " + str(startT)
-        calculateOneRadius(conn, writer, intersectTableName, srid, \
+        calculateOneRadius2(conn, writer, srid, \
                 radius,  gType, tractDict, skipGeom)
         if shortCommitFlag :
             output.seek(0) 

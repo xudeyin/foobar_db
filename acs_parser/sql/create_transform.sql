@@ -17,7 +17,15 @@ create index idx_geom_26986 on tl_2011_transform using gist (geom26986);
 insert into tl_2011_transform select 
 	g.sumlev, t.geoid, g.logrecno, g.state_fips, g.county_fips, g.tract, g.block_group_id, 'MA', ST_Transform(t.geom, 26986) from vg20115 g, tl_2011_25_tract t where g.sumlev=140 and substr(g.geocode, 8)=t.geoid;
 
-
 insert into tl_2011_transform select 
 	g.sumlev, t.geoid, g.logrecno, g.state_fips, g.county_fips, g.tract, g.block_group_id, 'MA', ST_Transform(t.geom, 26986) from vg20115 g, tl_2011_25_bg t where g.sumlev=150 and substr(g.geocode, 8)=t.geoid;
 
+
+
+
+
+CREATE TABLE bank_branch_26986
+(
+bank_id             int4 not null primary key
+);
+SELECT AddGeometryColumn('bank_branch_26986', 'geom', 26986, 'POINT', 2);
