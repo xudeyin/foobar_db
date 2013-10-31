@@ -120,9 +120,88 @@ def getIntersectCommon(queryStr, \
                 t[2]/tractArea*100, srid))
 
     t2 = getCurrentTime(); 
-    print "        process one bank: " + str(t2-t1)
+    ##print "        process one bank: " + str(t2-t1)
+
+## creating temp table is faster than looping through each individual bank_id
+## (this method is faster and calculateOneRadius())
+def calculateOneRadius3 (
+        conn,\
+        csvWriter, \
+        srid, \
+        radius, \
+        sType, \
+        tractDict, \
+        skipGeom) :
+
+    qStr1 = '''
+        create temp table bank_buffer_temp
+        (
+            bank_id       int4 not null,
+            radius        float not null,
+            c_area        float not null,
+            primary key   (bank_id, radius)
+        )'''
+    qStr2 = "SELECT AddGeometryColumn('bank_buffer_temp', 'geom_circle', 26986, 'POLYGON',2)"
+    qStr3 = 'create index on bank_buffer_temp using gist (geom_circle)'
+    qStr4 = 'create index on bank_buffer_temp (radius)'
 
 
+##    qStr5 = '''insert into bank_buffer_temp 
+##            select bank_id, %s, ST_Area(ST_Buffer(geom, %s)), ST_Buffer(geom, %s) 
+##            from bank_branch_26986'''
+
+    qStr5 = '''insert into bank_buffer_temp 
+            select id, %s, ST_Area(ST_Buffer(ST_Transform(geom, %s), %s)), ST_Buffer(ST_Transform(geom, %s), %s) 
+            from bank_branch'''
+
+    qStr6 = 'drop table bank_buffer_temp'
+
+    qStr = '''
+        select  
+            b.bank_id,
+            b.c_area,
+            t.geoid, 
+            t.logrecno, 
+            ST_Area(ST_Intersection(b.geom_circle, t.geom26986)), 
+            ST_Multi(ST_Intersection(b.geom_circle,  t.geom26986)) 
+        from 
+            tl_2011_transform t, 
+            bank_buffer_temp b
+        where 
+            ST_Intersects(b.geom_circle, t.geom26986) and b.radius=%s and t.sumlev = %s'''
+
+    cur=conn.cursor()
+
+    cur.execute(qStr1)
+    cur.execute(qStr2)
+    cur.execute(qStr3)
+    cur.execute(qStr4)
+    cur.execute(qStr5, (radius, srid, radius, srid, radius))
+
+    cur.execute(qStr, (radius, getTigerFileType(sType)))
+
+    for t in cur.fetchall() :
+
+        bank_id=t[0]
+        c_area=t[1]
+        geoid=t[2]
+        logrecno=t[3]
+        tractArea=tractDict[geoid]
+
+        if not skipGeom :
+            csvWriter.writerow((bank_id, radius, geoid, \
+                logrecno, c_area, tractArea, t[4], \
+                t[4]/tractArea*100, srid, t[5]))
+        else :
+            csvWriter.writerow((bank_id, radius, geoid, \
+                logrecno, c_area, tractArea, t[4], \
+                t[4]/tractArea*100, srid))
+
+
+    ##drop the temp table.
+    cur.execute(qStr6)
+
+## this does NOT work.  very slow.
 def calculateOneRadius2 (
         conn,\
         csvWriter, \
@@ -161,14 +240,14 @@ def calculateOneRadius2 (
         logrecno=t[3]
         tractArea=tractDict[geoid]
 
-        if isIncludeGeom :
+        if not skipGeom :
             csvWriter.writerow((bank_id, radius, geoid, \
                 logrecno, c_area, tractArea, t[4], \
-                t[4]/tractArea*100, 26986, t[5]))
+                t[4]/tractArea*100, srid, t[5]))
         else :
             csvWriter.writerow((bank_id, radius, geoid, \
                 logrecno, c_area, tractArea, t[4], \
-                t[4]/tractArea*100, 26986))
+                t[4]/tractArea*100, srid))
 
 
 def calculateOneRadius(
@@ -385,7 +464,7 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, \
     for radius in xrange(start, end + 1, step) :
         startT=getCurrentTime()
         print "==>Processing radius " + str(radius) +"m. Start Time: " + str(startT)
-        calculateOneRadius2(conn, writer, srid, \
+        calculateOneRadius3(conn, writer, srid, \
                 radius,  gType, tractDict, skipGeom)
         if shortCommitFlag :
             output.seek(0) 

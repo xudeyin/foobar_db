@@ -29,3 +29,5 @@ CREATE TABLE bank_branch_26986
 bank_id             int4 not null primary key
 );
 SELECT AddGeometryColumn('bank_branch_26986', 'geom', 26986, 'POINT', 2);
+
+insert into bank_branch_26986 select id, ST_Transform(geom,26986) from bank_branch;
