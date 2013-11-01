@@ -282,6 +282,69 @@ def calculateOneRadius(
     cur1.close()
     cur2.close()
 
+
+## output the file in the format Cyril requested: "could we set up the table 
+## so that each row represents a bank location (and not a radius/bank location). 
+## Accordingly, each ACS column would have multiple columns in the output table 
+## (each representing a certain radius).
+def outputToFileOneBankPerRow(conn, tDict, resultTableName, outputFileName) :
+
+    qStr0 = 'select distinct bank_id from ' + resultTableName + ' order by bank_id'
+
+    startingPos=2
+
+    qStr1='select bank_id, radius'
+    if 'bank_branch' in tDict : 
+        for c in tDict['bank_branch'] :
+            qStr1 = qStr1 +  ', ' + c[1] 
+            startingPos += 1
+
+    for tName in sorted(tDict) :
+        if tName=='bank_branch' :
+            continue
+        for col in tDict[tName] :
+            qStr1 = qStr1 + ', ' +  col[1]
+
+    qStr1 = qStr1 + '\nfrom ' + resultTableName + ' where bank_id=%s order by radius'
+
+    print qStr1;
+
+    cur1 = conn.cursor()
+    cur2 = conn.cursor()
+
+    cur1.execute(qStr0)
+
+
+    ## key = bank_id
+    ## value = [[row1], [row2], ...[row-n]] - each row is for one bankId
+    ## outputDict = { }
+
+    with open (outputFileName, 'wb') as f :
+        writer = csv.writer(f)
+        ## for each bank_id ...
+        for r1 in cur1.fetchall() :
+
+            bankId = r1[0]
+            rowCnt=0
+            cur2.execute(qStr1, (bankId,))
+            oneRow= []
+
+            ## each bank_id and radius ...
+            for r2 in cur2.fetchall() :
+                if rowCnt == 0 :  ## first row of this bank_id and radius
+                    oneRow.extend(r2)
+                    oneRow.pop(1) ##remove the radius column
+                else :  
+                    idx = 0
+                    for x in r2[startingPos:] :
+                        oneRow.insert(startingPos - 1 + rowCnt + 2*idx, x)
+                        idx += 1
+                rowCnt += 1
+            writer.writerow(oneRow)
+    cur2.close()
+    cur1.close()
+
+
 def queryACSTables(conn, tDict, intersectionTableName, resultTableName) :
  
     ## construct query statement for the _detail table.
@@ -575,6 +638,7 @@ def main() :
     ## output to CSV file
     if isOutputToFile :
         createOutputFile(conn, outputTableName, outputFileName)
+        outputToFileOneBankPerRow(conn, tDict, resultTableName, outputFileName) ;
 
 
     print '==> Done <=='
