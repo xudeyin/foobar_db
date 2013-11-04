@@ -336,8 +336,8 @@ def outputToFileOneBankPerRow(conn, tDict, resultTableName, outputFileName) :
                     oneRow.pop(1) ##remove the radius column
                 else :  
                     idx = 0
-                    for x in r2[startingPos:] :
-                        oneRow.insert(startingPos - 1 + rowCnt + 2*idx, x)
+                    for x in reversed(r2[startingPos:]) :
+                        oneRow.insert(len(oneRow) - idx*(rowCnt+1), x)
                         idx += 1
                 rowCnt += 1
             writer.writerow(oneRow)
@@ -527,7 +527,11 @@ def doIntersectionCal(conn, intersectTableName, gType, start, end, step, \
     for radius in xrange(start, end + 1, step) :
         startT=getCurrentTime()
         print "==>Processing radius " + str(radius) +"m. Start Time: " + str(startT)
-        calculateOneRadius3(conn, writer, srid, \
+        if useTempTable:
+            calculateOneRadius3(conn, writer, srid, \
+                radius,  gType, tractDict, skipGeom)
+        else :
+            calculateOneRadius(conn, writer, srid, \
                 radius,  gType, tractDict, skipGeom)
         if shortCommitFlag :
             output.seek(0) 
@@ -567,12 +571,15 @@ def createOutputFile(conn, outputTableName, outputFileName) :
 
 def main() :
 
+    startT = getCurrentTime()
+
     parser = argparse.ArgumentParser(description='Bank location and ACS data analysis based on SRID 26986 (Massachusetts mainland).')
     parser.add_argument('config_file', type=str,  help='Path to the configuration file.')
     parser.add_argument('-r', action='store_true', help='Re-calculate the intersection table. By default the program uses the existing table defined in the configuration file.')
     parser.add_argument('-tiger', choices=['tract','bg', 'all'], default='all', help='Which TIGER file(s) to use in the spatial calculation. Default = ALL')
     parser.add_argument('-shortcommit', action='store_true', help='Invoke database commit for each radius calculation. Use this option on small server with limited resources.')
     parser.add_argument('-skipgeom', action='store_true', help='Skip store the intersection MUTLIPOLYGON in the geom column.  This will cut the processing time by half.')
+    parser.add_argument('-usetemptable', action='store_true', help='Create temp table when doing the geom intersection calculation (improves performance on local server but not on AWS server).')
     
     args = vars(parser.parse_args())
 
@@ -618,6 +625,7 @@ def main() :
 
     shortCommit=args['shortcommit']
     skipGeom=args['skipgeom']
+    useTempTable=args['usetemptable']
 
     ## calculate spatial intersections
     if args['r'] :
@@ -637,11 +645,13 @@ def main() :
 
     ## output to CSV file
     if isOutputToFile :
-        createOutputFile(conn, outputTableName, outputFileName)
-        outputToFileOneBankPerRow(conn, tDict, resultTableName, outputFileName) ;
+##        createOutputFile(conn, outputTableName, outputFileName)
+        outputToFileOneBankPerRow(conn, tableSelectionDict, outputTableName, outputFileName) ;
 
 
     print '==> Done <=='
+    print '==> Total processing time: ' + str(getCurrentTime() - startT) + ' <=='
+
 #### end of main ####
 
 if __name__ =='__main__':main()
