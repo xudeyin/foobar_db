@@ -1,0 +1,125 @@
+c001,Parent Company Name ,0,0
+c002,SNL Branch Key ,0,0
+c003,Institution Regulatory Industry ,652,0
+c004,Address 1 ,120,0
+c005,Address 2 ,140,0
+c006,City ,71,0
+c007,State ,2,0
+c008,Zip Code ,14,0
+c009,Zip Code Extended ,220,0
+c010,County ,218818,0
+c011,County FIPS Code ,110,0
+c012,MSA Code ,3,0
+c013,MSA/CBSA Name ,4,0
+c014,Census Tract ,7,0
+c015,Latitude (degrees),16,0
+c016,Longitude (degrees),17,0
+c017,Centroid? Yes/No,150,0
+c018,RMA Code ,12,0
+c019,RMA ,10,0
+c020,Fed Market Description ,9,0
+c021,Fed Market ,8,0
+c022,Branch Status ,100,0
+c023,Institution Cert Number ,213,0
+c024,Parent BHC Number ,215,0
+c025,Description ,190,0
+c026,Full-service Branch? Yes/No,31,0
+c027,Non-Retail Bank Branch? Yes/No,776,0
+c028,Denovo Branch? Yes/No,777,0
+c029,Expected Branch Opening Date (mm/dd/yyyy),200,0
+c030,Branch Service ,32,0
+c031,Branch Service Description ,33,0
+c032,Branch Opened (mm/dd/yyyy),180,0
+c033,Branch Closed (mm/dd/yyyy),160,0
+c034,Store Company Name ,260,0
+c035,Extended Branch Operating Status Lookup Key ,778,0
+c036,In-Store Branch? Yes/No,8947,0
+c037,Bank Branch Service Key ,8104,0
+c038,Headquarters? Yes/No,15,0
+c039,Branch: Tape Deposits ($000),240,2012
+c040,Branch: Tape Deposits ($000),240,2011
+c041,Branch: Tape Deposits ($000),240,2010
+c042,Branch: Tape Deposits ($000),240,2009
+c043,Branch: Tape Deposits ($000),240,2008
+c044,Branch: Tape Deposits ($000),240,2007
+c045,Branch: Tape Deposits ($000),240,2006
+c046,Branch: Tape Deposits ($000),240,2005
+c047,Branch: Tape Deposits ($000),240,2004
+c048,Branch: Tape Deposits ($000),240,2003
+c049,Branch: Tape Deposits ($000),240,2002
+c050,Branch: Tape Deposits ($000),240,2001
+c051,Branch: Tape Deposits ($000),240,2000
+c052,Branch: Tape Deposits ($000),240,1999
+c053,Branch: Tape Deposits ($000),240,1998
+c054,Institution Company Name ,350,0
+c055,Institution Company Short Name ,218517,0
+c056,Institution Ticker ,18,0
+c057,SNL Institution Key ,126767,0
+c058,Institution Regulatory Industry ,652,0
+c059,Institution Regulatory Industry Alias ,218820,0
+c060,Institution Address 1 ,666,0
+c061,Institution Address 2 ,242,0
+c062,Institution City ,236,0
+c063,Institution State ,238,0
+c064,Institution Zip Code ,244,0
+c065,Institution Zip Code Extended ,246,0
+c066,Institution Pending Branch Total Number of Offices (actual),794,0
+c067,Institution Pending Branch Total Traditional Branch Count (actual),793,0
+c068,Institution Pending Branch Total In-store Branch Count (actual),792,0
+c069,Parent Company Name ,370,0
+c070,Parent Company Short Name ,218518,0
+c071,Parent Ticker ,19,0
+c072,Highest-holder Parent Company's Institution Key ,126769,0
+c073,Parent Regulatory Industry ,821,0
+c074,Parent Regulatory Industry Alias ,218823,0
+c075,Parent BHC Number ,222,0
+c076,Parent Address 1 ,228,0
+c077,Parent Address 2 ,668,0
+c078,Parent City ,224,0
+c079,Parent State ,226,0
+c080,Parent Zip Code ,232,0
+c081,Parent Zip Code Extended ,234,0
+c082,Parent Pending Branch Total Number of Offices (actual),799,0
+c083,Parent Pending Branch Total Traditional Branch Count (actual),798,0
+c084,Parent Pending Branch Total In-store Branch Count (actual),797,0
+c085,Institution Company Name ,390,0
+c086,Institution Company Short Name ,218519,0
+c087,Institution Ticker ,21,0
+c088,SNL Institution Key ,126768,0
+c089,Institution Regulatory Industry ,656,0
+c090,Institution Regulatory Industry Alias ,218821,0
+c091,Institution Address 1 ,258,0
+c092,Institution Address 2 ,670,0
+c093,Institution City ,254,0
+c094,Institution State ,256,0
+c095,Institution Zip Code ,262,0
+c096,Institution Zip Code Extended ,264,0
+c097,Institution Current Branch Total Number of Offices (actual),783,0
+c098,Institution Current Branch Total Traditional Branch Count (actual),781,0
+c099,Institution Current Branch Total In-store Branch Count (actual),782,0
+c100,Parent Company Name ,410,0
+c101,Parent Company Short Name ,218520,0
+c102,Parent Ticker ,22,0
+c103,Highest-holder Parent Company's Institution Key ,126770,0
+c104,Parent Regulatory Industry ,822,0
+c105,Parent Regulatory Industry Alias ,218824,0
+c106,Parent BHC Number ,737,0
+c107,Parent Address 1 ,270,0
+c108,Parent Address 2 ,272,0
+c109,Parent City ,266,0
+c110,Parent State ,268,0
+c111,Parent Zip Code ,274,0
+c112,Parent Zip Code Extended ,276,0
+c113,Parent Current Branch Total Number of Offices (actual),789,0
+c114,Parent Current Branch Total In-store Branch Count (actual),787,0
+c115,Parent Current Branch Total Traditional Branch Count (actual),788,0
+c116,State Branches (Filtered) (actual),1166,0
+c117,State Deposits (Filtered) ($000),1167,0
+c118,State Weighted Deposits (Filtered) ($000),1168,0
+c119,State Bank & Thrift Branches (Filtered) (actual),1240,0
+c120,State Bank & Thrift Deposits (Filtered) ($000),1241,0
+c121,County Branches (Filtered) (actual),1175,0
+c122,County Deposits (Filtered) ($000),1176,0
+c123,County Weighted Deposits (Filtered) ($000),1177,0
+c124,County Bank & Thrift Branches (Filtered) (actual),1246,0
+c125,County Bank & Thrift Deposits (Filtered) ($000),1247,0

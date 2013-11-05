@@ -1,0 +1,25 @@
+1. save xls to csv
+2. run py script to create the column map table
+4. based on the column create the bank_branch table schema
+5. create the bank_branch table
+6. run ./gen_bank_table.py  to generate bank_branch.csv 
+7. convert to utf: (the output is in ISO-8859 encoding and psql doesn't like it)
+iconv -f ISO-8859-1 -t utf8 bank_branch.csv > foo
+8 copy file to table:
+mapster_db=# \copy bank_branch from './foo' with DELIMITER ',' NULL as 'NULL' CSV;
+
+-- add a geometry column to bank_branch --
+mapster_db=# select AddGeometryColumn('bank_branch', 'geom', 4269, 'POINT', 2);
+
+convert lat/long to geom(POINT)
+lat column: c015
+long column: c016
+
+mapster_db=# update bank_branch set geom = ST_SetSRID(ST_MakePoint(c016, c015), 4269);
+UPDATE 3646
+mapster_db=# create index idx_ma_bank_branches_geom on bank_branch using GIST(geom);
+CREATE INDEX
+mapster_db=# 
+
+
+
