@@ -508,7 +508,7 @@ def parseTableSelectionStr(tDict, columnStr) :
  
 
 def doIntersectionCal(conn, intersectTableName, gType, start, end, step, \
-        srid, shortCommitFlag, skipGeom) :
+        srid, shortCommitFlag, skipGeom, useTempTable) :
 
     colArr=['bank_id', 'radius', 'geoid', 'logrecno', 'area1', \
                          'area2', 'intersect_area', 'ratio', 'srid']
@@ -633,11 +633,11 @@ def main() :
         if gType=='tract' or gType=='all' :
             doIntersectionCal(conn, intersectionTableName, \
                     'tract', minRadius, maxRadius, step, \
-                    srid, shortCommit, skipGeom)
+                    srid, shortCommit, skipGeom, useTempTable)
         if gType=='bg' or gType=='all' :
             doIntersectionCal(conn, intersectionTableName, \
                     'bg', minRadius, maxRadius, step, \
-                    srid, shortCommit, skipGeom)
+                    srid, shortCommit, skipGeom, useTempTable)
 
     ## calculate acs data based on spatial analysis
     createResultTable(conn, tableSelectionDict, outputTableName)
