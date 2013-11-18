@@ -1,5 +1,7 @@
 \COPY acs_dataset FROM 'data/acs_dataset.csv' DELIMITER ',' CSV;
 \COPY acs_dataset_columns FROM 'data/acs_dataset_columns.csv' DELIMITER ',' CSV;
+\COPY g20115 from 'data/g20115.csv' delimiter ',' csv;
+
 \COPY B00001 FROM 'data/B00001.csv' DELIMITER ',' CSV;
 \COPY B00002 FROM 'data/B00002.csv' DELIMITER ',' CSV;
 \COPY B01001 FROM 'data/B01001.csv' DELIMITER ',' CSV;
